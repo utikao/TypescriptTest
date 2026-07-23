@@ -80,12 +80,30 @@ function App() {
   const [state, dispatch] = useReducer(dashboardReducer, initialState)
   const { activeTab, data, loading, error, selectedManufacturer } = state
 
-  // --- HOOK 3: useState (UI Local Search & Favorites State) ---
+  // --- HOOK 3: useState (UI Local Search & Persistent Favorites) ---
   const [searchQuery, setSearchQuery] = useState<string>('')
-  const [favorites, setFavorites] = useState<string[]>([])
+
+  // Load favorites from localStorage on initial render
+  const [favorites, setFavorites] = useState<string[]>(() => {
+    try {
+      const saved = localStorage.getItem('swapi_favorites')
+      return saved ? JSON.parse(saved) : []
+    } catch {
+      return []
+    }
+  })
 
   // --- HOOK 4: useRef (DOM Reference for Auto-Focus) ---
   const searchInputRef = useRef<HTMLInputElement>(null)
+
+  // Sync favorites to localStorage whenever the array changes
+  useEffect(() => {
+    try {
+      localStorage.setItem('swapi_favorites', JSON.stringify(favorites))
+    } catch (e) {
+      console.warn('Failed to save favorites to localStorage:', e)
+    }
+  }, [favorites])
 
   // --- TAB SWITCH HANDLER ---
   const handleTabChange = (newTab: Tab) => {
@@ -94,30 +112,43 @@ function App() {
     dispatch({ type: 'SET_TAB', payload: newTab })
   }
 
-  // --- HOOK 5: useEffect (Data Fetching with Race Condition Guard) ---
+  // --- HOOK 5: useEffect (Async Data Fetching with Race Guard) ---
   useEffect(() => {
     const controller = new AbortController()
-    dispatch({ type: 'FETCH_INIT' })
 
-    fetch(`https://swapi.info/api/${activeTab}`, { signal: controller.signal })
-      .then((res) => {
-        if (!res.ok) throw new Error('Network response failed')
-        return res.json()
-      })
-      .then((json: SwapiItem[]) => {
+    const fetchData = async () => {
+      dispatch({ type: 'FETCH_INIT' })
+
+      try {
+        const res = await fetch(`https://swapi.info/api/${activeTab}`, {
+          signal: controller.signal,
+        })
+
+        if (!res.ok) {
+          throw new Error(`HTTP status ${res.status}: Failed to fetch ${activeTab}`)
+        }
+
+        const json: SwapiItem[] = await res.json()
+
         if (activeTab === 'films') {
           ;(json as Movie[]).sort((a, b) => a.episode_id - b.episode_id)
         }
+
         dispatch({ type: 'FETCH_SUCCESS', payload: json })
         searchInputRef.current?.focus()
-      })
-      .catch((err: Error) => {
-        if (err.name === 'AbortError') return
-        dispatch({
-          type: 'FETCH_FAILURE',
-          payload: err.message || 'Failed to communicate with SWAPI server.',
-        })
-      })
+      } catch (err) {
+        if (err instanceof Error && err.name === 'AbortError') return
+
+        const errorMessage =
+          err instanceof Error
+            ? err.message
+            : 'Failed to communicate with SWAPI server.'
+
+        dispatch({ type: 'FETCH_FAILURE', payload: errorMessage })
+      }
+    }
+
+    fetchData()
 
     return () => controller.abort()
   }, [activeTab])
@@ -182,7 +213,7 @@ function App() {
       <aside className="sidebar">
         <div className="sidebar-brand">
           <img src={reactLogo} className="logo" alt="React logo" />
-          <h2>SWAPI App</h2>
+          // <h2>SWAPI App</h2>
         </div>
         <nav className="sidebar-menu">
           <button
