@@ -213,7 +213,7 @@ function App() {
       <aside className="sidebar">
         <div className="sidebar-brand">
           <img src={reactLogo} className="logo" alt="React logo" />
-          // <h2>SWAPI App</h2>
+          <h2>SWAPI App</h2>
         </div>
         <nav className="sidebar-menu">
           <button
@@ -307,10 +307,10 @@ function App() {
           ) : (
             <div className="movies-grid">
               {activeTab === 'films' ? (
-                (filteredData as Movie[]).map((movie, index) => {
+                (filteredData as Movie[]).map((movie) => {
                   const isFav = favorites.includes(movie.title)
                   return (
-                    <div key={`film-${index}`} className="card-wrapper">
+                    <div key={`film-${movie.episode_id}`} className="card-wrapper">
                       <button
                         className={`fav-button ${isFav ? 'active' : ''}`}
                         onClick={() => toggleFavorite(movie.title)}
@@ -322,10 +322,10 @@ function App() {
                   )
                 })
               ) : activeTab === 'starships' ? (
-                (filteredData as Starship[]).map((starship, index) => {
+                (filteredData as Starship[]).map((starship) => {
                   const isFav = favorites.includes(starship.name)
                   return (
-                    <div key={`ship-${index}`} className="card-wrapper">
+                    <div key={`ship-${starship.name}`} className="card-wrapper">
                       <button
                         className={`fav-button ${isFav ? 'active' : ''}`}
                         onClick={() => toggleFavorite(starship.name)}
@@ -337,10 +337,10 @@ function App() {
                   )
                 })
               ) : (
-                (filteredData as Planet[]).map((planet, index) => {
+                (filteredData as Planet[]).map((planet) => {
                   const isFav = favorites.includes(planet.name)
                   return (
-                    <div key={`planet-${index}`} className="card-wrapper">
+                    <div key={`planet-${planet.name}`} className="card-wrapper">
                       <button
                         className={`fav-button ${isFav ? 'active' : ''}`}
                         onClick={() => toggleFavorite(planet.name)}
