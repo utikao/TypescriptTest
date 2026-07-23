@@ -1,0 +1,66 @@
+/* Update the grid to enforce a stable width */
+.movies-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 25px;
+  align-items: start; /* Prevents cards from stretching vertically to match uneven rows */
+}
+
+/* Enforce structure inside the card */
+.movie-card {
+  background-color: #1a1a1a;
+  border: 1px solid #333;
+  border-radius: 12px;
+  overflow: hidden;
+  transition: transform 0.2s ease, border-color 0.2s ease;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+
+  /* Fix: Force every card to have a fixed layout flow */
+  display: flex;
+  flex-direction: column;
+  height: 380px; /* Forces uniform height across ALL cards */
+  width: 100%;
+  box-sizing: border-box;
+}
+
+/* Keep headers identical */
+.card-header {
+  background-color: #222;
+  padding: 15px 20px;
+  border-bottom: 1px solid #333;
+  height: 65px; /* Stable header height */
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.card-header h3 {
+  margin: 4px 0 0 0;
+  font-size: 1.1rem;
+  color: #fff;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis; /* Keeps long ship names on one clean line */
+}
+
+/* Make the body consume all available space */
+.card-body {
+  padding: 20px;
+  flex-grow: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden; /* Stops long crawls from blowing up the card size */
+}
+
+/* Push the footer strictly to the bottom */
+.card-footer {
+  padding: 12px 20px;
+  background-color: #151515;
+  border-top: 1px solid #252525;
+  margin-top: auto; /* Absolute bottom positioning */
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.85rem;
+  color: #bbb;
+  height: 20px;
+}
