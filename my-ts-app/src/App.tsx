@@ -11,17 +11,11 @@ import reactLogo from './assets/react.svg'
 import './App.css'
 import MovieCard, { type Movie } from './Cards/MovieCard'
 import StarshipCard, { type Starship } from './Cards/StarshipCard'
+import PlanetCard, { type Planet } from './Cards/PlanetCard'
 import { useTheme } from './ThemeContext'
 
 // --- TYPES & INTERFACES ---
 export type Tab = 'films' | 'starships' | 'planets'
-
-export interface Planet {
-  name: string
-  climate?: string
-  terrain?: string
-  population?: string
-}
 
 type SwapiItem = Movie | Starship | Planet
 
@@ -56,7 +50,6 @@ function dashboardReducer(
 ): DashboardState {
   switch (action.type) {
     case 'SET_TAB':
-      // 💡 GUARD 1: If user clicks the already active tab, return existing state unchanged
       if (state.activeTab === action.payload) return state
 
       return {
@@ -96,33 +89,37 @@ function App() {
 
   // --- TAB SWITCH HANDLER ---
   const handleTabChange = (newTab: Tab) => {
-    if (newTab === activeTab) return // 💡 GUARD 2: Prevent dispatch if tab is already active
-    setSearchQuery('') // Reset search query when switching views
+    if (newTab === activeTab) return
+    setSearchQuery('')
     dispatch({ type: 'SET_TAB', payload: newTab })
   }
 
-  // --- HOOK 5: useEffect (Data Fetching Side Effect) ---
+  // --- HOOK 5: useEffect (Data Fetching with Race Condition Guard) ---
   useEffect(() => {
+    const controller = new AbortController()
     dispatch({ type: 'FETCH_INIT' })
 
-    fetch(`https://swapi.info/api/${activeTab}`)
+    fetch(`https://swapi.info/api/${activeTab}`, { signal: controller.signal })
       .then((res) => {
         if (!res.ok) throw new Error('Network response failed')
         return res.json()
       })
       .then((json: SwapiItem[]) => {
         if (activeTab === 'films') {
-          (json as Movie[]).sort((a, b) => a.episode_id - b.episode_id)
+          ;(json as Movie[]).sort((a, b) => a.episode_id - b.episode_id)
         }
         dispatch({ type: 'FETCH_SUCCESS', payload: json })
         searchInputRef.current?.focus()
       })
       .catch((err: Error) => {
+        if (err.name === 'AbortError') return
         dispatch({
           type: 'FETCH_FAILURE',
           payload: err.message || 'Failed to communicate with SWAPI server.',
         })
       })
+
+    return () => controller.abort()
   }, [activeTab])
 
   // --- HOOK 6: useCallback (Memoized Function Reference) ---
@@ -312,27 +309,14 @@ function App() {
                 (filteredData as Planet[]).map((planet, index) => {
                   const isFav = favorites.includes(planet.name)
                   return (
-                    <div key={`planet-${index}`} className="movie-card card-wrapper">
+                    <div key={`planet-${index}`} className="card-wrapper">
                       <button
                         className={`fav-button ${isFav ? 'active' : ''}`}
                         onClick={() => toggleFavorite(planet.name)}
                       >
                         {isFav ? '★' : '☆'}
                       </button>
-                      <div className="card-header">
-                        <span className="episode-badge class-badge">
-                          {planet.climate || 'Unknown Climate'}
-                        </span>
-                        <h3>{planet.name}</h3>
-                      </div>
-                      <div className="card-body">
-                        <p>
-                          <strong>Terrain:</strong> {planet.terrain || 'Unknown'}
-                        </p>
-                        <p>
-                          <strong>Population:</strong> {planet.population || 'Unknown'}
-                        </p>
-                      </div>
+                      <PlanetCard planet={planet} />
                     </div>
                   )
                 })
