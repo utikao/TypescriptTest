@@ -1,9 +1,8 @@
 import {
   useState,
-  useReducer,
-  useEffect,
   useMemo,
   useRef,
+  useCallback,
   type ChangeEvent,
 } from 'react'
 import reactLogo from './assets/react.svg'
@@ -13,131 +12,43 @@ import StarshipCard, { type Starship } from './Cards/StarshipCard'
 import PlanetCard, { type Planet } from './Cards/PlanetCard'
 import { useTheme } from './ThemeContext'
 import { useFavorites } from './hooks/useFavorites'
-
-// --- TYPES & INTERFACES ---
-export type Tab = 'films' | 'starships' | 'planets'
-
-type SwapiItem = Movie | Starship | Planet
-
-// --- REDUCER TYPES ---
-interface DashboardState {
-  activeTab: Tab
-  data: SwapiItem[]
-  loading: boolean
-  error: string | null
-  selectedManufacturer: string
-}
-
-type DashboardAction =
-  | { type: 'SET_TAB'; payload: Tab }
-  | { type: 'FETCH_INIT' }
-  | { type: 'FETCH_SUCCESS'; payload: SwapiItem[] }
-  | { type: 'FETCH_FAILURE'; payload: string }
-  | { type: 'SET_MANUFACTURER'; payload: string }
-
-// --- REDUCER FUNCTION ---
-const initialState: DashboardState = {
-  activeTab: 'films',
-  data: [],
-  loading: true,
-  error: null,
-  selectedManufacturer: 'All',
-}
-
-function dashboardReducer(
-  state: DashboardState,
-  action: DashboardAction
-): DashboardState {
-  switch (action.type) {
-    case 'SET_TAB':
-      if (state.activeTab === action.payload) return state
-
-      return {
-        ...state,
-        activeTab: action.payload,
-        selectedManufacturer: 'All',
-        loading: true,
-        error: null,
-      }
-    case 'FETCH_INIT':
-      return { ...state, loading: true, error: null }
-    case 'FETCH_SUCCESS':
-      return { ...state, loading: false, data: action.payload, error: null }
-    case 'FETCH_FAILURE':
-      return { ...state, loading: false, error: action.payload }
-    case 'SET_MANUFACTURER':
-      return { ...state, selectedManufacturer: action.payload }
-    default:
-      return state
-  }
-}
+import { useSwapiData, type Tab, type SwapiItem } from './hooks/useSwapiData'
 
 function App() {
-  // --- HOOK 1: useContext (Global Theme Context) ---
+  // --- HOOK 1: Global Theme ---
   const { theme, toggleTheme } = useTheme()
 
-  // --- HOOK 2: useReducer (Complex Dashboard & Fetching State) ---
-  const [state, dispatch] = useReducer(dashboardReducer, initialState)
-  const { activeTab, data, loading, error, selectedManufacturer } = state
-
-  // --- HOOK 3: Local UI State ---
+  // --- HOOK 2: Local UI State (Search & Focus) ---
   const [searchQuery, setSearchQuery] = useState<string>('')
-
-  // --- HOOK 4: Custom Hook ---
-  const { favorites, toggleFavorite } = useFavorites()
-
-  // --- HOOK 5: useRef (DOM Reference for Auto-Focus) ---
   const searchInputRef = useRef<HTMLInputElement>(null)
+
+  // Memoize the focus callback so it doesn't trigger extra fetches
+  const handleFetchSuccess = useCallback(() => {
+    searchInputRef.current?.focus()
+  }, [])
+
+  // --- HOOK 3: Data Fetching (Extracted!) ---
+  const {
+    activeTab,
+    data,
+    loading,
+    error,
+    selectedManufacturer,
+    setTab,
+    setManufacturer,
+  } = useSwapiData(handleFetchSuccess)
+
+  // --- HOOK 4: Persistent Favorites (Extracted!) ---
+  const { favorites, toggleFavorite } = useFavorites()
 
   // --- TAB SWITCH HANDLER ---
   const handleTabChange = (newTab: Tab) => {
     if (newTab === activeTab) return
     setSearchQuery('')
-    dispatch({ type: 'SET_TAB', payload: newTab })
+    setTab(newTab)
   }
 
-  // --- HOOK 5: useEffect (Async Data Fetching with Race Guard) ---
-  useEffect(() => {
-    const controller = new AbortController()
-
-    const fetchData = async () => {
-      dispatch({ type: 'FETCH_INIT' })
-
-      try {
-        const res = await fetch(`https://swapi.info/api/${activeTab}`, {
-          signal: controller.signal,
-        })
-
-        if (!res.ok) {
-          throw new Error(`HTTP status ${res.status}: Failed to fetch ${activeTab}`)
-        }
-
-        const json: SwapiItem[] = await res.json()
-
-        if (activeTab === 'films') {
-          ;(json as Movie[]).sort((a, b) => a.episode_id - b.episode_id)
-        }
-
-        dispatch({ type: 'FETCH_SUCCESS', payload: json })
-        searchInputRef.current?.focus()
-      } catch (err) {
-        if (err instanceof Error && err.name === 'AbortError') return
-
-        const errorMessage =
-          err instanceof Error
-            ? err.message
-            : 'Failed to communicate with SWAPI server.'
-
-        dispatch({ type: 'FETCH_FAILURE', payload: errorMessage })
-      }
-    }
-
-    fetchData()
-
-    return () => controller.abort()
-  }, [activeTab])
-
-  // --- HOOK 6: useMemo (Memoized Data Calculations) ---
+  // --- MEMOIZED DATA CALCULATIONS ---
   const manufacturerOptions = useMemo((): string[] => {
     if (activeTab !== 'starships') return []
 
@@ -224,7 +135,7 @@ function App() {
           </div>
 
           <div className="controls-row">
-            {/* --- THEME TOGGLE (useContext) --- */}
+            {/* --- THEME TOGGLE --- */}
             <button
               onClick={toggleTheme}
               className="theme-toggle-btn"
@@ -233,7 +144,7 @@ function App() {
               {theme === 'dark' ? '☀️ Light Mode' : '🌙 Dark Mode'}
             </button>
 
-            {/* --- SEARCH INPUT WITH useRef --- */}
+            {/* --- SEARCH INPUT --- */}
             <input
               ref={searchInputRef}
               type="text"
@@ -253,10 +164,7 @@ function App() {
                   id="manufacturer-select"
                   value={selectedManufacturer}
                   onChange={(e: ChangeEvent<HTMLSelectElement>) =>
-                    dispatch({
-                      type: 'SET_MANUFACTURER',
-                      payload: e.target.value,
-                    })
+                    setManufacturer(e.target.value)
                   }
                   className="filter-dropdown"
                 >
