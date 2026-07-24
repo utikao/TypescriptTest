@@ -80,13 +80,13 @@ function App() {
   const [state, dispatch] = useReducer(dashboardReducer, initialState)
   const { activeTab, data, loading, error, selectedManufacturer } = state
 
-  // --- HOOK 3: Local UI State & Custom Hooks ---
+  // --- HOOK 3: Local UI State ---
   const [searchQuery, setSearchQuery] = useState<string>('')
 
-  // 💡 FIX: Look how clean this is now! One line replaces 23 lines of code.
+  // --- HOOK 4: Custom Hook ---
   const { favorites, toggleFavorite } = useFavorites()
 
-  // --- HOOK 4: useRef (DOM Reference for Auto-Focus) ---
+  // --- HOOK 5: useRef (DOM Reference for Auto-Focus) ---
   const searchInputRef = useRef<HTMLInputElement>(null)
 
   // --- TAB SWITCH HANDLER ---
