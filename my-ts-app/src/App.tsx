@@ -3,7 +3,6 @@ import {
   useReducer,
   useEffect,
   useMemo,
-  useCallback,
   useRef,
   type ChangeEvent,
 } from 'react'
@@ -13,6 +12,7 @@ import MovieCard, { type Movie } from './Cards/MovieCard'
 import StarshipCard, { type Starship } from './Cards/StarshipCard'
 import PlanetCard, { type Planet } from './Cards/PlanetCard'
 import { useTheme } from './ThemeContext'
+import { useFavorites } from './hooks/useFavorites'
 
 // --- TYPES & INTERFACES ---
 export type Tab = 'films' | 'starships' | 'planets'
@@ -80,30 +80,14 @@ function App() {
   const [state, dispatch] = useReducer(dashboardReducer, initialState)
   const { activeTab, data, loading, error, selectedManufacturer } = state
 
-  // --- HOOK 3: useState (UI Local Search & Persistent Favorites) ---
+  // --- HOOK 3: Local UI State & Custom Hooks ---
   const [searchQuery, setSearchQuery] = useState<string>('')
 
-  // Load favorites from localStorage on initial render
-  const [favorites, setFavorites] = useState<string[]>(() => {
-    try {
-      const saved = localStorage.getItem('swapi_favorites')
-      return saved ? JSON.parse(saved) : []
-    } catch {
-      return []
-    }
-  })
+  // 💡 FIX: Look how clean this is now! One line replaces 23 lines of code.
+  const { favorites, toggleFavorite } = useFavorites()
 
   // --- HOOK 4: useRef (DOM Reference for Auto-Focus) ---
   const searchInputRef = useRef<HTMLInputElement>(null)
-
-  // Sync favorites to localStorage whenever the array changes
-  useEffect(() => {
-    try {
-      localStorage.setItem('swapi_favorites', JSON.stringify(favorites))
-    } catch (e) {
-      console.warn('Failed to save favorites to localStorage:', e)
-    }
-  }, [favorites])
 
   // --- TAB SWITCH HANDLER ---
   const handleTabChange = (newTab: Tab) => {
@@ -153,16 +137,7 @@ function App() {
     return () => controller.abort()
   }, [activeTab])
 
-  // --- HOOK 6: useCallback (Memoized Function Reference) ---
-  const toggleFavorite = useCallback((itemName: string) => {
-    setFavorites((prev) =>
-      prev.includes(itemName)
-        ? prev.filter((name) => name !== itemName)
-        : [...prev, itemName]
-    )
-  }, [])
-
-  // --- HOOK 7: useMemo (Memoized Data Calculations) ---
+  // --- HOOK 6: useMemo (Memoized Data Calculations) ---
   const manufacturerOptions = useMemo((): string[] => {
     if (activeTab !== 'starships') return []
 
